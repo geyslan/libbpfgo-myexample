@@ -1,6 +1,6 @@
 CLANG  = clang
 
-OUTPUTDIR = $(abspath ./output)
+OUTPUTDIR = ./output
 
 .PHONY: all
 all: libbpf vmlinuxh
@@ -12,16 +12,16 @@ CC     = gcc
 CFLAGS = -g -O2 -Werror -Wall -fpie
 
 LIBBPFDIR      = $(abspath ./libbpf)
-LIBBPFOBJ      = $(OUTPUTDIR)/libbpf.a
+LIBBPFOBJ      = $(abspath $(OUTPUTDIR)/libbpf.a)
 LIBBPFSRCDIR   = $(LIBBPFDIR)/src
 LIBBPFSRCFILES = $(wildcard $(LIBBPFSRCDIR)/*.[ch])
-LIBBPFDESTDIR  = $(OUTPUTDIR)
+LIBBPFDESTDIR  = $(abspath $(OUTPUTDIR))
 LIBBPFOBJDIR   = $(LIBBPFDESTDIR)/libbpf
 
 .PHONY: libbpf
 libbpf: $(LIBBPFOBJ)
 
-$(LIBBPFOBJ): $(LIBBPFSRCFILES) # | $(OUTPUTDIR)
+$(LIBBPFOBJ): $(LIBBPFSRCFILES) | $(OUTPUTDIR)
 	CC="$(CC)" CFLAGS="$(CFLAGS)" \
 	$(MAKE) -C $(LIBBPFSRCDIR) \
 		BUILD_STATIC_ONLY=1 \
@@ -33,22 +33,23 @@ $(LIBBPFOBJ): $(LIBBPFSRCFILES) # | $(OUTPUTDIR)
 
 # vmlinux header file
 
-BTFFILE  = /sys/kernel/btf/vmlinux
 BPFTOOL  = $(shell which bpftool)
+BTFFILE  = /sys/kernel/btf/vmlinux
 VMLINUXH = $(OUTPUTDIR)/vmlinux.h
 
 .PHONY: vmlinuxh
 vmlinuxh: $(VMLINUXH)
 
-$(VMLINUXH): $(OUTPUTDIR)
+$(VMLINUXH): $(BTFFILE) | $(OUTPUTDIR)
+	@echo "INFO: generating $@ from $<";
+	$(BPFTOOL) btf dump file $< format c > $@;
+
+$(BTFFILE):
 	@if [ ! -f $(BTFFILE) ]; then \
 		echo "ERROR: kernel does not seem to support BTF"; \
 		exit 1; \
 	fi
-	@if [ ! -f $(VMLINUXH) ]; then \
-		echo "INFO: generating $(VMLINUXH) from $(BTFFILE)"; \
-		$(BPFTOOL) btf dump file $(BTFFILE) format c > $(VMLINUXH); \
-	fi
+
 
 # output
 

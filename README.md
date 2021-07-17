@@ -1,1 +1,3 @@
 # libbpfgo-myexample
+
+Run `make`.
