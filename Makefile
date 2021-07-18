@@ -11,8 +11,9 @@ all: libbpf vmlinuxh
 CC     = gcc
 CFLAGS = -g -O2 -Werror -Wall -fpie
 
+GIT            = $(shell which git)
 LIBBPFDIR      = $(abspath ./libbpf)
-LIBBPFOBJ      = $(abspath $(OUTPUTDIR)/libbpf.a)
+LIBBPFOBJ      = $(OUTPUTDIR)/libbpf.a
 LIBBPFSRCDIR   = $(LIBBPFDIR)/src
 LIBBPFSRCFILES = $(wildcard $(LIBBPFSRCDIR)/*.[ch])
 LIBBPFDESTDIR  = $(abspath $(OUTPUTDIR))
@@ -21,7 +22,8 @@ LIBBPFOBJDIR   = $(LIBBPFDESTDIR)/libbpf
 .PHONY: libbpf
 libbpf: $(LIBBPFOBJ)
 
-$(LIBBPFOBJ): $(LIBBPFSRCFILES) | $(OUTPUTDIR)
+$(LIBBPFOBJ): $(LIBBPFSRCDIR) $(LIBBPFSRCFILES) | $(OUTPUTDIR)
+	$(info INFO: compiling $@)
 	CC="$(CC)" CFLAGS="$(CFLAGS)" \
 	$(MAKE) -C $(LIBBPFSRCDIR) \
 		BUILD_STATIC_ONLY=1 \
@@ -30,6 +32,12 @@ $(LIBBPFOBJ): $(LIBBPFSRCFILES) | $(OUTPUTDIR)
 		INCLUDEDIR= LIBDIR= UAPIDIR= \
 		install
 
+
+$(LIBBPFSRCDIR):
+ifeq ($(wildcard $@),)
+	$(info INFO: updating submodule 'libbpf')
+	$(GIT) submodule update --init --recursive
+endif
 
 # vmlinux header file
 
@@ -41,14 +49,13 @@ VMLINUXH = $(OUTPUTDIR)/vmlinux.h
 vmlinuxh: $(VMLINUXH)
 
 $(VMLINUXH): $(BTFFILE) | $(OUTPUTDIR)
-	@echo "INFO: generating $@ from $<";
+	$(info INFO: generating $@ from $<)
 	$(BPFTOOL) btf dump file $< format c > $@;
 
 $(BTFFILE):
-	@if [ ! -f $(BTFFILE) ]; then \
-		echo "ERROR: kernel does not seem to support BTF"; \
-		exit 1; \
-	fi
+ifeq ($(wildcard $@), )
+	$(error ERROR: kernel does not seem to support BTF)
+endif
 
 
 # output
