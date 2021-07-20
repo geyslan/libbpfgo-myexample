@@ -62,7 +62,7 @@ endif
 CLANG      = clang
 CLANGFLAGS = -g -O2 -c -target bpf
 CLANGINC   = $(OUTPUTDIR)
-BPFOBJDIR  = ./bpf
+BPFOBJDIR  = $(OUTPUTDIR)
 BPFS_C     = $(wildcard *.bpf.c)
 BPFS_O     = $(addprefix $(BPFOBJDIR)/, $(BPFS_C:.c=.o))
 
@@ -77,7 +77,7 @@ $(BPFOBJDIR)/%.o: %.c | $(BPFOBJDIR)
 # bpf management
 
 BPFMANSRC   = $(BPFS_C:.bpf.c=.go)
-BPFMAN      = $(BPFMANSRC:.go=)
+BPFMAN      = $(addprefix $(OUTPUTDIR)/, $(BPFMANSRC:.go=))
 CGO_CFLAGS  = -I $(OUTPUTDIR)/bpf
 CGO_LDFLAGS = $(OUTPUTDIR)/libbpf.a
 
@@ -88,16 +88,16 @@ $(BPFMAN): $(BPFMANSRC)
 	$(info INFO: compiling bpf management $@)
 	@go mod tidy
 	@CC=gcc CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" \
-		go build $<
+		go build -o $@ $<
 
 
 # output
 
-$(OUTPUTDIR) $(BPFOBJDIR):
+$(OUTPUTDIR):
 	@mkdir -p $@
 
 
 # cleanup
 
 clean:
-	rm -rf $(OUTPUTDIR) $(BPFOBJDIR) $(BPFMAN)
+	rm -rf $(OUTPUTDIR)

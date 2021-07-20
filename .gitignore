@@ -1,1 +1,9 @@
+# folders
+
 output/
+.vscode/
+
+
+# files
+
+go.sum

@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	bpfModule, err := bpf.NewModuleFromFile("bpf/procspec.bpf.o")
+	bpfModule, err := bpf.NewModuleFromFile("procspec.bpf.o")
 	if err != nil {
 		os.Exit(-1)
 	}
