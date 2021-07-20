@@ -1,7 +1,7 @@
 OUTPUTDIR = ./output
 
 .PHONY: all
-all: libbpf vmlinuxh bpfobj
+all: libbpf vmlinuxh bpfobj bpfman
 
 
 # libbpf
@@ -62,24 +62,42 @@ endif
 CLANG      = clang
 CLANGFLAGS = -g -O2 -c -target bpf
 CLANGINC   = $(OUTPUTDIR)
+BPFOBJDIR  = ./bpf
 BPFS_C     = $(wildcard *.bpf.c)
-BPFS_O     = $(addprefix $(OUTPUTDIR)/, $(BPFS_C:.c=.o))
+BPFS_O     = $(addprefix $(BPFOBJDIR)/, $(BPFS_C:.c=.o))
 
 .PHONY: bpfobj
-bpfobj: $(LIBBPFOBJ) $(VMLINUXH) $(BPFS_O)	
+bpfobj: libbpf vmlinuxh $(BPFS_O)
 
-$(OUTPUTDIR)/%.o: %.c
+$(BPFOBJDIR)/%.o: %.c | $(BPFOBJDIR)
 	$(info INFO: compiling bpf object $@)
 	@$(CLANG) $(CLANGFLAGS) -I $(CLANGINC) -o $@ $<
 
 
+# bpf management
+
+BPFMANSRC   = $(BPFS_C:.bpf.c=.go)
+BPFMAN      = $(BPFMANSRC:.go=)
+CGO_CFLAGS  = -I $(OUTPUTDIR)/bpf
+CGO_LDFLAGS = $(OUTPUTDIR)/libbpf.a
+
+.PHONY: bpfman
+bpfman: bpfobj $(BPFMAN)
+
+$(BPFMAN): $(BPFMANSRC)
+	$(info INFO: compiling bpf management $@)
+	@go mod tidy
+	@CC=gcc CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" \
+		go build $<
+
+
 # output
 
-$(OUTPUTDIR):
-	mkdir -p $@
+$(OUTPUTDIR) $(BPFOBJDIR):
+	@mkdir -p $@
 
 
 # cleanup
 
 clean:
-	rm -rf $(OUTPUTDIR)
+	rm -rf $(OUTPUTDIR) $(BPFOBJDIR) $(BPFMAN)
