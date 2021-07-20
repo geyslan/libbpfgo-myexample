@@ -1,9 +1,7 @@
-CLANG  = clang
-
 OUTPUTDIR = ./output
 
 .PHONY: all
-all: libbpf vmlinuxh
+all: libbpf vmlinuxh bpfobj
 
 
 # libbpf
@@ -24,7 +22,7 @@ libbpf: $(LIBBPFOBJ)
 
 $(LIBBPFOBJ): $(LIBBPFSRCDIR) $(LIBBPFSRCFILES) | $(OUTPUTDIR)
 	$(info INFO: compiling $@)
-	CC="$(CC)" CFLAGS="$(CFLAGS)" \
+	@CC="$(CC)" CFLAGS="$(CFLAGS)" \
 	$(MAKE) -C $(LIBBPFSRCDIR) \
 		BUILD_STATIC_ONLY=1 \
 		OBJDIR=$(LIBBPFOBJDIR) \
@@ -34,10 +32,11 @@ $(LIBBPFOBJ): $(LIBBPFSRCDIR) $(LIBBPFSRCFILES) | $(OUTPUTDIR)
 
 
 $(LIBBPFSRCDIR):
-ifeq ($(wildcard $@),)
+ifeq ($(wildcard $@), )
 	$(info INFO: updating submodule 'libbpf')
 	$(GIT) submodule update --init --recursive
 endif
+
 
 # vmlinux header file
 
@@ -50,7 +49,7 @@ vmlinuxh: $(VMLINUXH)
 
 $(VMLINUXH): $(BTFFILE) | $(OUTPUTDIR)
 	$(info INFO: generating $@ from $<)
-	$(BPFTOOL) btf dump file $< format c > $@;
+	@$(BPFTOOL) btf dump file $< format c > $@;
 
 $(BTFFILE):
 ifeq ($(wildcard $@), )
@@ -58,10 +57,26 @@ ifeq ($(wildcard $@), )
 endif
 
 
+# bpf objects
+
+CLANG      = clang
+CLANGFLAGS = -g -O2 -c -target bpf
+CLANGINC   = $(OUTPUTDIR)
+BPFS_C     = $(wildcard *.bpf.c)
+BPFS_O     = $(addprefix $(OUTPUTDIR)/, $(BPFS_C:.c=.o))
+
+.PHONY: bpfobj
+bpfobj: $(LIBBPFOBJ) $(VMLINUXH) $(BPFS_O)	
+
+$(OUTPUTDIR)/%.o: %.c
+	$(info INFO: compiling bpf object $@)
+	@$(CLANG) $(CLANGFLAGS) -I $(CLANGINC) -o $@ $<
+
+
 # output
 
 $(OUTPUTDIR):
-	mkdir -p $(OUTPUTDIR)
+	mkdir -p $@
 
 
 # cleanup
