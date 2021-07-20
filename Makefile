@@ -34,7 +34,7 @@ $(LIBBPFOBJ): $(LIBBPFSRCDIR) $(LIBBPFSRCFILES) | $(OUTPUTDIR)
 $(LIBBPFSRCDIR):
 ifeq ($(wildcard $@), )
 	$(info INFO: updating submodule 'libbpf')
-	$(GIT) submodule update --init --recursive
+	@$(GIT) submodule update --init --recursive
 endif
 
 

@@ -1,3 +1,3 @@
 # libbpfgo-myexample
 
-Run `make`.
+Run `make`, `cd output/`, `sudo ./procspec`.
